@@ -3,7 +3,7 @@
 '''
 @Author: xieydd
 @since: 2020-02-20 09:51:17
-@lastTime: 2020-02-22 23:10:07
+@lastTime: 2020-02-24 17:21:09
 @LastAuthor: Do not edit
 @message: GEMM CLASS
 '''
@@ -80,7 +80,7 @@ class GEMM():
 
 
 '''
-@description: 
+@description: Im2col algorithm
 @param 
     A: feature [IH,IW,IC]
     B: kernel [KH,KW,IC]
@@ -94,6 +94,9 @@ class GEMM():
 site:
     - https://jackwish.net/2019/convolution-neural-networks-optimization.html
     - https://blog.csdn.net/dwyane12138/article/details/78449898
+
+keys:
+- im2col handle NHWC data layout will increase the memmory miss than NCHW data layout 
 '''
 
 
@@ -133,6 +136,35 @@ def im2col(A, B, OC, stride_h, stride_w):
                             TK[oc, ic * (KH*KW) + kh * KW
                                + kh] = B[kh][kw][ic]
     return TA, TK
+
+
+'''
+@description: Memory pack algorithm increase the Spatial Locality, speed up because of  Memory_hierarchy\
+              ;But more number split more memory usage for padding : 2𝐶((𝐾𝐻−1)∗(ℎ𝑊+ℎ𝑤(𝐾𝑊−1))+(𝐾𝑊−1)∗(𝑤𝐻+ℎ𝑤(𝐾𝐻−1))),\
+              when h==H w==W, memory pack just like im2col + gemm; 
+
+              Memory pack include Spatial and Channel pack; Notice Channel pack will influence the Locality no memory usage.
+              If you have more 1x1 conv, im2col will be better than spatial memory pack
+@param {type} 
+@return: 
+'''
+
+
+def memory_pack(A, pack_num):
+    IH = A.shape[0]
+    IW = A.shape[1]
+    IC = A.shape[2]
+
+    assert IH % pack_num == 0 & IW & pack_num == 0, 'pack num error'
+
+    D = np.zeros((pack_num*pack_num, IH/pack_num, IW/pack_num, IC))
+
+    for ih in range(IH/pack_num):
+        for iw in range(IW/pack_num):
+            for ic in range(IC):
+                for num in range(pack_num*pack_num):
+                    D[num][ih][iw][ic] = A[ih+num/pack_num][iw+num % pack_num][ic]
+    return D
 
 
 def main():
@@ -213,6 +245,48 @@ def main():
         D = g.gemm_2d(TA, TK, C)
     end = time.time()
     print((end - start) * 1000, " ms")
+
+    # 3x3x5
+    K = np.array(
+        [
+            [
+                [1, 2, 3, 4, 5],
+                [6, 7, 8, 9, 10],
+                [11, 12, 13, 14, 15],
+                [16, 17, 18, 19, 20]
+            ],
+            [
+                [1, 2, 3, 4, 5],
+                [6, 7, 8, 9, 10],
+                [11, 12, 13, 14, 15],
+                [16, 17, 18, 19, 20]
+            ],
+            [
+                [1, 2, 3, 4, 5],
+                [6, 7, 8, 9, 10],
+                [11, 12, 13, 14, 15],
+                [16, 17, 18, 19, 20]
+            ],
+            [
+                [1, 2, 3, 4, 5],
+                [6, 7, 8, 9, 10],
+                [11, 12, 13, 14, 15],
+                [16, 17, 18, 19, 20]
+            ]
+        ]
+    )
+
+    # 1x1x5
+    N = np.array(
+        [
+            [
+                [1, 1, 1, 1, 1]
+            ]
+        ]
+    )
+
+    KS = memory_pack(K, 2)
+    print(KS)
 
 
 if __name__ == "__main__":
