@@ -1,0 +1,3 @@
+[submodule "how-to-optimize-gemm"]
+	path = how-to-optimize-gemm
+	url = https://github.com/tpoisonooo/how-to-optimize-gemm.git

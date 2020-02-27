@@ -3,7 +3,7 @@
 '''
 @Author: xieydd
 @since: 2020-02-20 09:51:17
-@lastTime: 2020-02-24 17:21:09
+@lastTime: 2020-02-24 17:36:48
 @LastAuthor: Do not edit
 @message: GEMM CLASS
 '''
@@ -77,6 +77,8 @@ class GEMM():
                 for iw in range(IW):
                     D[ih][kh] += A[ih][iw]*B[kh][iw]
         return D
+
+    def winograd23(self):
 
 
 '''
